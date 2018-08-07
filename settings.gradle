@@ -1,2 +1,4 @@
 include ':kotlinx-server-base'
 include ':kotlinx-server-jetty'
+include ':kotlinx-server-xodus'
+include ':kotlinx-server-mongo'
