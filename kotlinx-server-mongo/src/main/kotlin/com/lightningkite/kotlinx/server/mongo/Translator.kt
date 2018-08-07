@@ -59,7 +59,6 @@ fun Any?.toBson(type: KxType): BsonValue{
             }
         }
         else -> {
-            for()
             BsonString(JsonSerializer.write(type.base.kclass as KClass<Any>, type, this).toString())
         }
     }
