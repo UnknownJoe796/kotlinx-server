@@ -1,11 +1,11 @@
 package com.lightningkite.kotlinx.server.xodus
 
+import com.lightningkite.kotlinx.locale.Date
+import com.lightningkite.kotlinx.locale.DateTime
+import com.lightningkite.kotlinx.locale.Time
+import com.lightningkite.kotlinx.locale.TimeStamp
 import com.lightningkite.kotlinx.reflection.KxType
 import com.lightningkite.kotlinx.serialization.json.JsonSerializer
-import java.time.Instant
-import java.time.ZoneId
-import java.time.ZonedDateTime
-import java.util.*
 import kotlin.reflect.KClass
 import kotlin.reflect.full.createInstance
 
@@ -21,8 +21,9 @@ object XodusConversion {
         Short::class,
         Char::class -> value as Comparable<*>
 
-        Date::class -> (value as Date).time
-        ZonedDateTime::class -> (value as ZonedDateTime).toInstant().toEpochMilli()
+        Date::class -> (value as Date).daysSinceEpoch
+        Time::class -> (value as Time).millisecondsSinceMidnight
+        TimeStamp::class -> (value as TimeStamp).millisecondsSinceEpoch
 
         String::class -> value as String
 
@@ -39,8 +40,9 @@ object XodusConversion {
         Short::class,
         Char::class -> value
 
-        Date::class -> Date(value as Long)
-        ZonedDateTime::class -> ZonedDateTime.ofInstant(Instant.ofEpochMilli(value as Long), ZoneId.systemDefault())
+        Date::class -> Date(value as Int)
+        Time::class -> Time(value as Int)
+        TimeStamp::class -> TimeStamp(value as Long)
 
         String::class -> value as String
 
