@@ -24,7 +24,7 @@ object XodusConversion {
 
         String::class -> value as String
 
-        else -> JsonSerializer.write(type.base.kclass as KClass<Any>, type, value).toString()
+        else -> JsonSerializer.write(type, value)
     }
 
     fun fromXodus(value: Any, type: KxType): Any = when (type.base.kclass) {
@@ -43,6 +43,6 @@ object XodusConversion {
 
         String::class -> value as String
 
-        else -> JsonSerializer.read(type.base.kclass as KClass<Any>, type, value as String)!!
+        else -> JsonSerializer.read(type, value as String)!!
     }
 }

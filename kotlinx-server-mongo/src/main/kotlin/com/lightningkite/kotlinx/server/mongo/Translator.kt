@@ -1,14 +1,18 @@
 package com.lightningkite.kotlinx.server.mongo
 
-import com.lightningkite.kotlinx.reflection.KxType
+import com.lightningkite.kotlinx.reflection.kxType
 import com.lightningkite.kotlinx.serialization.externalName
-import com.lightningkite.kotlinx.serialization.json.JsonSerializer
+import com.lightningkite.kotlinx.server.ConditionOnItem
+import com.lightningkite.kotlinx.server.ModificationOnItem
 import com.lightningkite.kotlinx.server.base.Context
 import com.mongodb.client.MongoClient
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.MongoDatabase
 import org.bson.*
 import kotlin.reflect.KClass
+import com.mongodb.BasicDBObject
+import org.bson.types.ObjectId
+
 
 var Context.mongo: MongoClient
     get() = this["mongo"] as MongoClient
@@ -19,6 +23,7 @@ var Context.mongo: MongoClient
 val Context.mongoDb get() = mongo.getDatabase("primary")
 
 
+inline fun <reified T: Any> MongoDatabase.get() = get(T::class)
 operator fun MongoDatabase.get(type: KClass<*>):MongoCollection<BsonDocument> = try{
     this.getCollection(type.externalName!!, BsonDocument::class.java)
 } catch(e:IllegalAccessException){
@@ -27,39 +32,17 @@ operator fun MongoDatabase.get(type: KClass<*>):MongoCollection<BsonDocument> = 
     this.getCollection(type.externalName!!, BsonDocument::class.java)
 }
 
-inline fun <reified T: Any> MongoDatabase.get() = get(T::class)
+inline fun <reified T: Any> MongoCollection<BsonDocument>.insertOne(value: T)
+        = this.insertOne(BsonValueSerializer.write(T::class.kxType, value, Unit) as BsonDocument)
 
-fun Any?.toBson(type: KxType): BsonValue{
-    return when(this){
-        null -> BsonNull.VALUE
-        is Boolean -> BsonBoolean.valueOf(this)
-        is Int -> BsonInt32(this)
-        is Long -> BsonInt64(this)
-        is Float -> BsonDouble(this.toDouble())
-        is Double -> BsonDouble(this)
-        is Byte -> BsonInt32(this.toInt())
-        is Short -> BsonInt32(this.toInt())
-        is Char -> BsonString(this.toString())
-        is String -> BsonString(this)
-        is List<*> -> BsonArray(this.map { it.toBson(type.typeParameters.first().type) })
-        is Map<*, *> -> BsonDocument().apply {
-            val keyType = type.typeParameters[0].type
-            val valueType = type.typeParameters[1].type
-            if(keyType.base.kclass == String::class){
-                for((key, value) in this){
-                    append(key, value.toBson(valueType))
-                }
-            } else {
-                for((key, value) in this){
-                    append(
-                            JsonSerializer.write(keyType.base.kclass as KClass<Any>, keyType, key).toString(),
-                            value.toBson(valueType)
-                    )
-                }
-            }
-        }
-        else -> {
-            BsonString(JsonSerializer.write(type.base.kclass as KClass<Any>, type, this).toString())
-        }
-    }
-}
+inline fun <reified T: Any> MongoCollection<BsonDocument>.insertMany(values: List<T>)
+        = this.insertMany(values.map { BsonValueSerializer.write(T::class.kxType, it, Unit) as BsonDocument })
+
+inline fun <reified T: Any> MongoCollection<BsonDocument>.replace(id:String, value: T)
+        = this.updateOne(BasicDBObject("_id", ObjectId(id)), BsonValueSerializer.write(T::class.kxType, value, Unit) as BsonDocument)
+
+inline fun <reified T: Any> MongoCollection<BsonDocument>.updateOne(id:String, modifications:List<ModificationOnItem<T>>)
+        = this.updateOne(BasicDBObject("_id", ObjectId(id)), modifications.toMongo(BsonValueSerializer))
+
+inline fun <reified T: Any> MongoCollection<BsonDocument>.updateMany(filter: ConditionOnItem<T>, modifications:List<ModificationOnItem<T>>)
+        = this.updateMany(filter.toMongo(BsonValueSerializer), modifications.toMongo(BsonValueSerializer))
